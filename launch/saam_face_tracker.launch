@@ -1,0 +1,9 @@
+<launch>
+    <node name="ros_face_recognition" pkg="ros_face_recognition" type="face_recognition_node.py" respawn="false" output="screen">
+        <param name="show_window" value="False" />
+        <param name="tracker_quality" value="5" />
+        <param name="scale" value="0.5" />
+        <param name="image_topic" value="/camera/rgb/image_raw" />
+    </node>
+    <include file="$(find openni2_launch)/launch/openni2.launch"/>
+</launch>
