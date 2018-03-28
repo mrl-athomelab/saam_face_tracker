@@ -4,6 +4,7 @@ import rospy
 from face_detector import LiveFaceDetector
 from dynamixel import DynamixelMotor
 import sys
+import random
 
 
 class FaceTracker:
@@ -15,34 +16,46 @@ class FaceTracker:
         rospy.loginfo("Connecting to motor ...")
         self.motor = DynamixelMotor(motor_id)
         self.motor.set_speed(self.speed)
-        self.motor.direction = -1
+        direction = random.random()
+        if direction < 0.5:
+            direction = 1
+        else:
+            direction = -1
+        self.motor.direction = direction
 
     def run(self, face_label):
-        image_h, image_w = (200, 200)
-        faces = self.detector.detect((image_h, image_w))
+        try:
+            image_h, image_w = (200, 200)
+            faces = self.detector.detect((image_h, image_w))
 
-        human_detected = None
-        for face in faces:
-            if face.name == face_label:
-                human_detected = face
+            human_detected = None
+            for face in faces:
+                if face.name == face_label:
+                    human_detected = face
 
-        if human_detected is None:
-            position = self.motor.get_position()
-            if position > 45:
-                self.motor.direction = -1
-            elif position < -45:
-                self.motor.direction = 1
-            self.motor.set_speed(self.speed * self.motor.direction)
-        else:
-            distance = (image_w / 2) - (human_detected.x + human_detected.w / 2)
-            speed = distance / 3
-
-            if distance < 0:
-                self.motor.direction = -1
+            if human_detected is None:
+                position = self.motor.get_position()
+                if position > 45:
+                    self.motor.direction = -1
+                elif position < -45:
+                    self.motor.direction = 1
+                self.motor.set_speed(self.speed * self.motor.direction)
             else:
-                self.motor.direction = 1
+                distance = (image_w / 2) - (human_detected.x + human_detected.w / 2)
+                speed = distance / 3
 
-            self.motor.set_speed(speed)
+                if distance < 0:
+                    self.motor.direction = -1
+                else:
+                    self.motor.direction = 1
+
+                self.motor.set_speed(speed)
+        except KeyboardInterrupt:
+            rospy.logwarn("Shutting done ...")
+            return False
+        except rospy.service.ServiceException:
+            rospy.logwarn("Shutting done ...")
+            return False
 
 
 if __name__ == "__main__":
@@ -54,10 +67,7 @@ if __name__ == "__main__":
 
     tracker = FaceTracker(speed=25, motor_id=6)
     while True:
-        try:
-            tracker.run(sys.argv[1])
-        except KeyboardInterrupt:
-            rospy.logwarn("Shutting done ...")
+        if tracker.run(sys.argv[1]) is not None:
             break
 
     tracker.motor.set_speed(0)
